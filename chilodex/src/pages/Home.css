@@ -1,0 +1,58 @@
+/* Home.css */
+.home-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 70px); /* Resta la altura aproximada de la navbar */
+  background-color: #c6e0f5;
+  text-align: center;
+  padding: 2rem;
+  overflow: hidden; /* Para asegurar que la imagen de fondo no se desborde */
+}
+
+/* Capa de fondo con la imagen */
+.home-container::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url('/img/water-pokemon-3840x2160.jpg'); /* Reemplaza con la ruta correcta */
+  background-size: cover;
+  background-position: center;
+  opacity: 0.5; /* Ajusta este valor entre 0 y 1 para controlar la opacidad */
+  z-index: 0;
+}
+
+.home-content {
+  position: relative;
+  z-index: 1; /* Asegura que el contenido esté por encima del fondo */
+}
+
+.company-title {
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin-bottom: 3rem;
+  color: #000;
+  text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.7); /* Añade sombra para mejorar legibilidad */
+}
+
+.ujcv-title {
+  font-size: 3.5rem;
+  font-weight: bold;
+  color: #1a3a7e;
+  margin-bottom: 3rem;
+  text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.7);
+}
+
+.group-title {
+  font-size: 2rem;
+  font-family: monospace;
+  letter-spacing: 2px;
+  color: #333;
+  margin-bottom: 2rem;
+  text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.7);
+}
