@@ -10,8 +10,11 @@ const Chilodex = () => {
   const [lastOpened, setLastOpened] = useState(null);
   const [timeLeft, setTimeLeft] = useState(0);
   
+  const [historial, setHistorial] = useState([]);
+
+  
   // State for collection view
-  const [showCollection, setShowCollection] = useState(false);
+  const [vistaActual, setVistaActual] = useState("packs");
   const [coleccion, setColeccion] = useState([
     { id: 1, nombre: 'Mauffin', imagen: '/img/chilomones/Mauffin.png', desbloqueada: false },
     { id: 2, nombre: 'Noctuffin', imagen: '/img/chilomones/Noctuffin.png', desbloqueada: false },
@@ -32,19 +35,32 @@ const Chilodex = () => {
 
   // Effect to get the last opened time from localStorage
   useEffect(() => {
-    const storedTime = localStorage.getItem("lastOpened");
-    if (storedTime) {
-      const lastTime = new Date(storedTime);
-      setLastOpened(lastTime);
-      updateTimeLeft(lastTime);
-    }
-
-    // Cargar colección guardada si existe
-    const savedCollection = localStorage.getItem("cardCollection");
-    if (savedCollection) {
-      setColeccion(JSON.parse(savedCollection));
-    }
+    const fetchCollection = async () => {
+      const userId = localStorage.getItem("userId");
+      if (!userId) return;
+  
+      try {
+        const res = await fetch(`http://localhost:5000/cards/collection/${userId}`);
+        const data = await res.json();
+  
+        if (res.ok) {
+          const nombresDesbloqueados = data.map(card => card.name);
+          setColeccion(prev =>
+            prev.map(c =>
+              nombresDesbloqueados.includes(c.nombre)
+                ? { ...c, desbloqueada: true }
+                : c
+            )
+          );
+        }
+      } catch (error) {
+        console.error("Error cargando colección:", error);
+      }
+    };
+  
+    fetchCollection();
   }, []);
+  
 
   // Effect to save collection when it changes
   useEffect(() => {
@@ -62,6 +78,22 @@ const Chilodex = () => {
     }
   }, [timeLeft]);
 
+  const cargarHistorial = async () => {
+    const userId = localStorage.getItem("userId");
+    if (!userId) return;
+  
+    try {
+      const res = await fetch(`http://localhost:5000/cards/history/${userId}`);
+      const data = await res.json();
+  
+      if (res.ok) {
+        setHistorial(data);
+      }
+    } catch (error) {
+      console.error("Error al obtener historial:", error);
+    }
+  };
+  
   // Function to update the time left for cooldown
   const updateTimeLeft = (lastTime) => {
     const now = new Date();
@@ -92,32 +124,56 @@ const Chilodex = () => {
   };
 
   // Function to handle pack opening with cooldown
-  const manejarAperturaSobre = () => {
+  const manejarAperturaSobre = async () => {
     const now = new Date();
-
+    const userId = localStorage.getItem("userId");
+  
+    if (!userId) {
+      alert("Debes iniciar sesión para abrir sobres");
+      return;
+    }
+  
     if (lastOpened && now - lastOpened < 60 * 1000 && timeLeft > 0) {
       alert("Debes esperar antes de abrir otro sobre.");
       return;
     }
-
+  
     setEstaAbriendo(true);
-    
-    setTimeout(() => {
-      const cartaObtenida = getRandomCard();
-      
-      // Actualizamos la colección
-      setColeccion(prevColeccion => 
-        prevColeccion.map(carta => 
-          carta.id === cartaObtenida.id ? { ...carta, desbloqueada: true } : carta
-        )
-      );
-      
-      setCards([cartaObtenida]);
-      setPackOpened(true);
-      setEstaAbriendo(false);
-      setLastOpened(now);
-      localStorage.setItem("lastOpened", now.toString());
-      updateTimeLeft(now);
+  
+    setTimeout(async () => {
+      try {
+        const response = await fetch("http://localhost:5000/cards/open-pack", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId })
+        });
+  
+        const data = await response.json();
+  
+        if (!response.ok) {
+          throw new Error(data.message || "Error al abrir sobre");
+        }
+  
+        const cartaObtenida = data.card;
+  
+        // Marcar carta como desbloqueada en UI
+        setColeccion(prev =>
+          prev.map(c =>
+            c.nombre === cartaObtenida.name ? { ...c, desbloqueada: true } : c
+          )
+        );
+  
+        setCards([{ nombre: cartaObtenida.name, imagen: `/img/chilomones/${cartaObtenida.name}.png` }]);
+        setPackOpened(true);
+        setLastOpened(now);
+        localStorage.setItem("lastOpened", now.toString());
+        updateTimeLeft(now);
+      } catch (err) {
+        console.error("Error:", err);
+        alert("Error al abrir el sobre");
+      } finally {
+        setEstaAbriendo(false);
+      }
     }, 1500);
   };
 
@@ -142,9 +198,10 @@ const Chilodex = () => {
         <h1>Chilodex</h1>
         <p>Aquí puedes abrir sobres y ver tu colección de cartas.</p>
       </header>
-
+  
       <div className="content">
-        {showCollection ? (
+        {/* Vista: Colección */}
+        {vistaActual === "collection" && (
           <div className="collection-section">
             <h2>Tu Colección</h2>
             <div className="cards-grid">
@@ -173,7 +230,10 @@ const Chilodex = () => {
               ))}
             </div>
           </div>
-        ) : (
+        )}
+  
+        {/* Vista: Sobres */}
+        {vistaActual === "packs" && (
           <div className="pack-section">
             {!packOpened ? (
               <div className="text-center">
@@ -239,26 +299,70 @@ const Chilodex = () => {
             )}
           </div>
         )}
+  
+        {/* Vista: Historial */}
+        {vistaActual === "history" && (
+          <div className="history-section">
+            <h2>Historial de sobres abiertos</h2>
+            <table className="history-table">
+              <thead>
+                <tr>
+                  <th>Imagen</th>
+                  <th>Nombre</th>
+                  <th>Fecha</th>
+                </tr>
+              </thead>
+              <tbody>
+                {historial.map((item, index) => (
+                  <tr key={index}>
+                    <td><img src={item.imagen} alt={item.nombre} width={60} /></td>
+                    <td>{item.nombre}</td>
+                    <td>{item.fecha}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="button-container">
+              <button
+                onClick={() => setVistaActual("packs")}
+                className="back-button"
+              >
+                Volver
+              </button>
+            </div>
+          </div>
+        )}
       </div>
-
+  
+      {/* Footer con navegación */}
       <footer className="footer">
         <button 
-          onClick={() => toggleView('collection')}
+          onClick={() => setVistaActual("collection")}
           className="footer-button"
         >
           <Library size={20} />
           Colección
         </button>
         <button 
-          onClick={() => toggleView('packs')}
+          onClick={() => setVistaActual("packs")}
           className="footer-button"
         >
           <Package size={20} />
           Sobres
+        </button> 
+        <button 
+          onClick={async () => {
+            await cargarHistorial();
+            setVistaActual("history");
+          }}
+          className="footer-button"
+        >
+          <Sparkles size={20} />
+          Ver Historial
         </button>
       </footer>
     </div>
-  );
+  );  
 };
 
 export default Chilodex;

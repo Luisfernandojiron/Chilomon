@@ -3,12 +3,14 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
 const User = require("./models/User");
+const cardRoutes = require('./routes/cardRoutes');
 
 const app = express();
 
 // Middlewares
 app.use(express.json());
 app.use(cors());
+app.use("/cards", cardRoutes);
 
 // Conexión a MongoDB
 mongoose.connect("mongodb://127.0.0.1:27017/chilodex", {

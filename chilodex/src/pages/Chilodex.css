@@ -260,6 +260,29 @@ body {
   .animate-spin {
     animation: spin 1s linear infinite;
   }
+
+  .history-section {
+    padding: 1rem;
+    background-color: #f0f8ff;
+    border-radius: 12px;
+    margin-top: 1rem;
+  }
+  
+  .history-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+  }
+  
+  .history-table th, .history-table td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: center;
+  }
+  
+  .history-table th {
+    background-color: #e0eaff;
+  }
   
   @keyframes spin {
     from {
